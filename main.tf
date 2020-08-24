@@ -1,14 +1,21 @@
-# Configure the Microsoft Azure Provider
 provider "azurerm" {
-    # The "feature" block is required for AzureRM provider 2.x. 
+    # The "feature" block is required for AzureRM provider 2.x.
     # If you're using version 1.x, the "features" block is not allowed.
     version = "~>2.0"
     features {}
 }
 
+terraform {
+    backend "azurerm" {
+        resource_group_name = "demo-terraform"    
+        storage_account_name = "terraform-yournickname"
+        container_name = "terraform-demo"
+    }
+}
+
 # Create a resource group if it doesn't exist
 resource "azurerm_resource_group" "myterraformgroup" {
-    name     = "demo-terraform"
+    name     = "demo-terraform-infra"
     location = "southcentralus"
 
     tags = {
