@@ -1,25 +1,15 @@
-provider "azurerm" {
-    # The "feature" block is required for AzureRM provider 2.x.
-    # If you're using version 1.x, the "features" block is not allowed.
-    version = "~>2.0"
-    features {}
-}
-
-terraform {
-    backend "azurerm" {
-        resource_group_name = "demo-terraform"    
-        storage_account_name = "terraform-yournickname"
-        container_name = "terraform-demo"
-    }
+locals {
+    tagsname = "Terraform Demo"
+    username = "azureuser"
 }
 
 # Create a resource group if it doesn't exist
 resource "azurerm_resource_group" "myterraformgroup" {
     name     = "demo-terraform-infra"
-    location = "southcentralus"
+    location = var.azure_location
 
     tags = {
-        environment = "Terraform Demo"
+        environment = local.tagsname
     }
 }
 
@@ -27,11 +17,11 @@ resource "azurerm_resource_group" "myterraformgroup" {
 resource "azurerm_virtual_network" "myterraformnetwork" {
     name                = "myVnet"
     address_space       = ["10.0.0.0/16"]
-    location            = "southcentralus"
+    location            = var.azure_location
     resource_group_name = azurerm_resource_group.myterraformgroup.name
 
     tags = {
-        environment = "Terraform Demo"
+        environment = local.tagsname
     }
 }
 
@@ -46,42 +36,19 @@ resource "azurerm_subnet" "myterraformsubnet" {
 # Create public IPs
 resource "azurerm_public_ip" "myterraformpublicip" {
     name                         = "myPublicIP"
-    location                     = "southcentralus"
+    location                     = var.azure_location
     resource_group_name          = azurerm_resource_group.myterraformgroup.name
     allocation_method            = "Dynamic"
 
     tags = {
-        environment = "Terraform Demo"
-    }
-}
-
-# Create Network Security Group and rule
-resource "azurerm_network_security_group" "myterraformnsg" {
-    name                = "myNetworkSecurityGroup"
-    location            = "southcentralus"
-    resource_group_name = azurerm_resource_group.myterraformgroup.name
-    
-    security_rule {
-        name                       = "SSH"
-        priority                   = 1001
-        direction                  = "Inbound"
-        access                     = "Allow"
-        protocol                   = "Tcp"
-        source_port_range          = "*"
-        destination_port_range     = "22"
-        source_address_prefix      = "*"
-        destination_address_prefix = "*"
-    }
-
-    tags = {
-        environment = "Terraform Demo"
+        environment = local.tagsname
     }
 }
 
 # Create network interface
 resource "azurerm_network_interface" "myterraformnic" {
     name                      = "myNIC"
-    location                  = "southcentralus"
+    location                  = var.azure_location
     resource_group_name       = azurerm_resource_group.myterraformgroup.name
 
     ip_configuration {
@@ -92,7 +59,7 @@ resource "azurerm_network_interface" "myterraformnic" {
     }
 
     tags = {
-        environment = "Terraform Demo"
+        environment = local.tagsname
     }
 }
 
@@ -116,12 +83,12 @@ resource "random_id" "randomId" {
 resource "azurerm_storage_account" "mystorageaccount" {
     name                        = "diag${random_id.randomId.hex}"
     resource_group_name         = azurerm_resource_group.myterraformgroup.name
-    location                    = "southcentralus"
+    location                    = var.azure_location
     account_tier                = "Standard"
     account_replication_type    = "LRS"
 
     tags = {
-        environment = "Terraform Demo"
+        environment = var.azure_stoaccount
     }
 }
 
@@ -130,35 +97,34 @@ resource "tls_private_key" "example_ssh" {
   algorithm = "RSA"
   rsa_bits = 4096
 }
-output "tls_private_key" { value = "${tls_private_key.example_ssh.private_key_pem}" }
 
 # Create virtual machine
 resource "azurerm_linux_virtual_machine" "myterraformvm" {
-    name                  = "myVM"
-    location              = "southcentralus"
+    name                  = var.azure_vmname
+    location              = var.azure_location
     resource_group_name   = azurerm_resource_group.myterraformgroup.name
     network_interface_ids = [azurerm_network_interface.myterraformnic.id]
-    size                  = "Standard_DS1_v2"
+    size                  = var.azure_size
 
     os_disk {
-        name              = "myOsDisk"
-        caching           = "ReadWrite"
-        storage_account_type = "Premium_LRS"
+        name              = var.azure_osname
+        caching           = var.azure_oscaching
+        storage_account_type = var.azure_storaatype
     }
 
     source_image_reference {
-        publisher = "Canonical"
-        offer     = "UbuntuServer"
-        sku       = "16.04.0-LTS"
-        version   = "latest"
+        publisher = var.azure_publisher
+        offer     = var.azure_offer
+        sku       = var.azure_sku
+        version   = var.azure_versions
     }
 
     computer_name  = "myvm"
-    admin_username = "azureuser"
+    admin_username = local.username
     disable_password_authentication = true
         
     admin_ssh_key {
-        username       = "azureuser"
+        username       = local.username
         public_key     = tls_private_key.example_ssh.public_key_openssh
     }
 
@@ -167,6 +133,6 @@ resource "azurerm_linux_virtual_machine" "myterraformvm" {
     }
 
     tags = {
-        environment = "Terraform Demo"
+        environment = loca.tagsname
     }
 }
